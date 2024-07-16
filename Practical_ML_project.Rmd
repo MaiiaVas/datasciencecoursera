@@ -1,0 +1,103 @@
+---
+title: "Practical_ML_project"
+author: "Maiia Vasileva"
+date: "2024-07-16"
+output: html_document
+---
+
+# Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+# Overview
+In this project, our goal is to predict the manner in which the samplers did the exercise. Used data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+```{r setup, include=FALSE}
+library(ggplot2)
+library(caret)
+library(fscaret)
+library(randomForest)
+library(e1071)
+library(lubridate)
+library(scales)
+library(RColorBrewer)
+library(rattle)
+library(rpart)
+library(rpart.plot)
+library(repmis)
+```
+Download Training and Testing Datasets
+```{r}
+set.seed(555)
+url_training <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+download.file(url_training, destfile = "pml-training.csv")
+
+url_testing <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(url_testing, destfile = "pml-testing.csv")
+```
+Read Data sets
+```{r}
+Training <- read.csv(url_training, na.strings=c("NA",""), header=TRUE)
+dim(Training)
+
+Testing <- read.csv(url_testing, na.strings=c("NA",""), header=TRUE)
+dim(Testing)
+
+```
+
+Data Cleaning
+Delete Predictors from the Training Dataset which contain missing values
+```{r}
+Training <- Training[, colSums(is.na(Training)) == 0]
+Testing <- Testing[, colSums(is.na(Testing)) == 0]
+
+# Remove columns which are unfit for prediction
+
+Train <- Training[, -(1:7)]
+Test <- Testing[, -(1:7)]
+
+# Remaining Column Names
+colnames(Train)
+colnames(Test)
+```
+
+ Partitioning the Training Dataset 
+```{r}
+inTraining <- createDataPartition(Train$classe, p=0.7, list=FALSE)
+Training_1 <- Train[inTraining, ]
+Training_2 <- Train[-inTraining, ]
+dim(Training_1); dim(Training_2)
+```
+
+Prediction with Decision Tree Modeling
+```{r}
+
+DT_Model <- rpart(classe ~ ., data=Training_1, method="class")
+print(DT_Model, digits=3)
+fancyRpartPlot(DT_Model)
+
+```
+
+```{r}
+A_prediction <- predict(DT_Model, Training_1, type = "class")
+cmtree <- confusionMatrix(A_prediction, as.factor(Training_1$classe))
+cmtree
+```
+
+Random Forest Modeling
+```{r}
+set.seed(555)
+RF_Model <- randomForest(as.factor(classe) ~ ., data=Training_1)
+B_Prediction <- predict(RF_Model, Training_1, type = "class")
+cmrf <- confusionMatrix(B_Prediction, as.factor(Training_1$classe))
+cmrf
+
+```
+
+Results:
+We were able to obtain 100% of accuracy with Random Forest model compared with Decision Tree model accuracy 74%.
+Random Forest model will be chosen to predict the 20 test cases below.
+
+Predicting Test Data
+```{r}
+B_Prediction <- predict(RF_Model, Test, type = "class")
+B_Prediction
+```
